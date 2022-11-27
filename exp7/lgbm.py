@@ -162,10 +162,10 @@ def train_lightgbm_with_cv_log(
 
         model.fit(
             df_train[cols],
-            # np.log1p(df_train[label]),
-            np.log1p(df_train[label] / 4),
-            # eval_set=(df_val[cols], np.log1p(df_val[label])),
-            eval_set=(df_val[cols], np.log1p(df_val[label] / 4)),
+            np.log1p(df_train[label]),
+            # np.log1p(df_train[label] / 4),
+            eval_set=(df_val[cols], np.log1p(df_val[label])),
+            # eval_set=(df_val[cols], np.log1p(df_val[label] / 4)),
             eval_metric="fair",
             callbacks=[
                 lgb.early_stopping(
@@ -177,14 +177,14 @@ def train_lightgbm_with_cv_log(
 
         # validation
         val_pred = model.predict(df_val[cols], num_iteration=model.best_iteration_)
-        val_pred = np.expm1(val_pred).round() * 4
+        val_pred = np.expm1(val_pred)  # .round() * 4
         val_score = mean_absolute_error(df_val[label], val_pred)
         scores.append(val_score)
 
         _val_scores[val_idx] = val_pred
 
         _pred = model.predict(df_test[cols], num_iteration=model.best_iteration_)
-        _pred = np.expm1(_pred).round() * 4
+        _pred = np.expm1(_pred)  # .round() * 4
         prediction += _pred / Config.n_splits
         prediction = np.where(prediction < 0, 0, prediction)
 
