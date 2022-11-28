@@ -504,6 +504,26 @@ def make_feature_ut(df: pd.DataFrame) -> pd.DataFrame:
     return _df
 
 
+def make_feature_ut_2(df: pd.DataFrame) -> pd.DataFrame:
+    _df = df.copy()
+    _df = remove_noise(
+        _df,
+        window_length=7,
+        overwite=False,
+        cols=[
+            "pollen_tokyo",
+            "pollen_chiba",
+        ],
+    )
+    _df = add_lag_feat(
+        _df,
+        ["pollen_tokyo", "pollen_chiba"],
+        "year",
+    )
+
+    return _df
+
+
 def make_feature_cb(df: pd.DataFrame) -> pd.DataFrame:
     _df = df.copy()
     _df = time_feat(_df)
@@ -561,6 +581,28 @@ def make_feature_cb(df: pd.DataFrame) -> pd.DataFrame:
         ],
         axis=1,
     )
+
+    return _df
+
+
+def make_feature_cb_2(df: pd.DataFrame) -> pd.DataFrame:
+    _df = df.copy()
+    _df = remove_noise(
+        _df,
+        window_length=7,
+        overwite=False,
+        cols=[
+            "pollen_utsunomiya",
+            "pollen_tokyo",
+        ],
+    )
+    _df = add_lag_feat(
+        _df,
+        ["pollen_utsunomiya", "pollen_tokyo"],
+        "year",
+    )
+
+    # _df["windspeed_mult_pollen_tokyo"] = _df["windspeed_tokyo"] * _df["pollen_tokyo"]
 
     return _df
 
@@ -629,6 +671,31 @@ def make_feature_tk(df: pd.DataFrame) -> pd.DataFrame:
     return _df
 
 
+def make_feature_tk_2(df: pd.DataFrame) -> pd.DataFrame:
+    _df = df.copy()
+    # _df = remove_noise(
+    #     _df,
+    #     window_length=7,
+    #     overwite=False,
+    #     cols=[
+    #         "pollen_utsunomiya",
+    #         "pollen_chiba",
+    #     ],
+    # )
+    _df = add_lag_feat(
+        _df,
+        ["pollen_utsunomiya", "pollen_chiba"],
+        "year",
+    )
+
+    # _df["windspeed_mult_pollen_chiba"] = _df["windspeed_chiba"] * _df["pollen_chiba"]
+    # _df["windspeed_mult_pollen_utsunomiya_cos"] = (
+    #    _df["pollen_utsunomiya"] * _df["windspeed_utsunomiya_cos_mult_window_speed"]
+    # )
+
+    return _df
+
+
 def run_train(
     _df,
     _df_test,
@@ -664,19 +731,22 @@ def run_train(
     return prediction, scores, df_imps, _val_scores
 
 
-def make_feature(df_train, df_test, make_feature_func):
-    df_test["pollen_utsunomiya"] = -1
-    df_test["pollen_chiba"] = -1
-    df_test["pollen_tokyo"] = -1
+def make_feature(
+    df_train,
+    df_test,
+    make_feature_func,
+    cols=["pollen_utsunomiya", "pollen_chiba", "pollen_tokyo"],
+):
+    for col in cols:
+        df_test[col] = -1
+
     _df_tmp = pd.concat([df_train, df_test]).reset_index(drop=True)
 
     _df_feat = make_feature_func(_df_tmp)
 
-    _df = _df_feat[_df_feat["pollen_utsunomiya"] != -1].reset_index(drop=True)
-    _df_test = _df_feat[_df_feat["pollen_utsunomiya"] == -1].reset_index(drop=True)
-    _df_test = _df_test.drop(
-        ["pollen_utsunomiya", "pollen_chiba", "pollen_tokyo"], axis=1
-    )
+    _df = _df_feat[_df_feat[cols[0]] != -1].reset_index(drop=True)
+    _df_test = _df_feat[_df_feat[cols[0]] == -1].reset_index(drop=True)
+    _df_test = _df_test.drop(cols, axis=1)
 
     return _df, _df_test
 
@@ -717,6 +787,9 @@ def main():
     _df_test_ut["pollen_tokyo"] = prediction_tk_1
     _df_test_ut["pollen_chiba"] = prediction_cb_1
 
+    # _df_ut, _df_test_ut = make_feature(
+    #    _df_ut, _df_test_ut, make_feature_ut_2, cols=["pollen_utsunomiya"]
+    # )
     prediction_ut, scores_ut, df_imps_ut, _val_scores_ut = run_train(
         _df_ut, _df_test_ut, q_ut, "pollen_utsunomiya", label_cols=["pollen_utsunomiya"]
     )
@@ -724,12 +797,20 @@ def main():
     _df_test_tk["pollen_utsunomiya"] = prediction_ut_1
     _df_test_tk["pollen_chiba"] = prediction_cb_1
 
+    _df_tk, _df_test_tk = make_feature(
+        _df_tk, _df_test_tk, make_feature_tk_2, cols=["pollen_tokyo"]
+    )
+
     prediction_tk, scores_tk, df_imps_tk, _val_scores_tk = run_train(
         _df_tk, _df_test_tk, q_tk, "pollen_tokyo", label_cols=["pollen_tokyo"]
     )
 
     _df_test_cb["pollen_utsunomiya"] = prediction_ut_1
     _df_test_cb["pollen_tokyo"] = prediction_tk_1
+
+    _df_cb, _df_test_cb = make_feature(
+        _df_cb, _df_test_cb, make_feature_cb_2, cols=["pollen_chiba"]
+    )
 
     prediction_cb, scores_cb, df_imps_cb, _val_scores_cb = run_train(
         _df_cb, _df_test_cb, q_cb, "pollen_chiba", label_cols=["pollen_chiba"]
