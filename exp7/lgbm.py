@@ -45,7 +45,7 @@ class Config:
     sample_submission_path = "../input/sample_submission.csv"
     output_path = "../submission/"
     seed = 42
-    n_splits = 5
+    n_splits = 4
 
 
 random.seed(Config.seed)
@@ -629,7 +629,18 @@ def make_feature_tk(df: pd.DataFrame) -> pd.DataFrame:
     return _df
 
 
-def run_train(_df, _df_test, q, label, unused_feat=[]):
+def run_train(
+    _df,
+    _df_test,
+    q,
+    label,
+    unused_feat=[],
+    label_cols: List[str] = [
+        "pollen_utsunomiya",
+        "pollen_chiba",
+        "pollen_tokyo",
+    ],
+):
 
     _df_tr = _df[_df[label] >= 0].reset_index(drop=True)
     _df_tr = _df_tr[_df_tr[label] <= q].reset_index(drop=True)
@@ -643,6 +654,7 @@ def run_train(_df, _df_test, q, label, unused_feat=[]):
         _df_test,
         target_label=label,
         unused_label=["datetime", "datetime_dt"] + unused_feat,
+        label_cols=label_cols,
     )
 
     # for i, score in enumerate(scores):
@@ -683,22 +695,49 @@ def main():
     _df_cb, _df_test_cb = make_feature(df_train, df_test, make_feature_cb)
 
     print(f"train")
-    prediction_ut, scores_ut, df_imps_ut, _val_scores_ut = run_train(
+    os.makedirs("fea_imps", exist_ok=True)
+
+    # 1
+    prediction_ut_1, scores_ut, df_imps_ut, _val_scores_ut = run_train(
         _df_ut,
         _df_test_ut,
         q_ut,
         "pollen_utsunomiya",
     )
 
-    # print(df_imps_ut)
-
-    prediction_tk, scores_tk, df_imps_tk, _val_scores_tk = run_train(
+    prediction_tk_1, scores_tk, df_imps_tk, _val_scores_tk = run_train(
         _df_tk, _df_test_tk, q_tk, "pollen_tokyo"
     )
 
-    prediction_cb, scores_cb, df_imps_cb, _val_scores_cb = run_train(
+    prediction_cb_1, scores_cb, df_imps_cb, _val_scores_cb = run_train(
         _df_cb, _df_test_cb, q_cb, "pollen_chiba"
     )
+
+    # 2
+    _df_test_ut["pollen_tokyo"] = prediction_tk_1
+    _df_test_ut["pollen_chiba"] = prediction_cb_1
+
+    prediction_ut, scores_ut, df_imps_ut, _val_scores_ut = run_train(
+        _df_ut, _df_test_ut, q_ut, "pollen_utsunomiya", label_cols=["pollen_utsunomiya"]
+    )
+
+    _df_test_tk["pollen_utsunomiya"] = prediction_ut_1
+    _df_test_tk["pollen_chiba"] = prediction_cb_1
+
+    prediction_tk, scores_tk, df_imps_tk, _val_scores_tk = run_train(
+        _df_tk, _df_test_tk, q_tk, "pollen_tokyo", label_cols=["pollen_tokyo"]
+    )
+
+    _df_test_cb["pollen_utsunomiya"] = prediction_ut_1
+    _df_test_cb["pollen_tokyo"] = prediction_tk_1
+
+    prediction_cb, scores_cb, df_imps_cb, _val_scores_cb = run_train(
+        _df_cb, _df_test_cb, q_cb, "pollen_chiba", label_cols=["pollen_chiba"]
+    )
+
+    df_imps_ut.to_csv("fea_imps/ut.csv", index=None)
+    df_imps_tk.to_csv("fea_imps/tk.csv", index=None)
+    df_imps_cb.to_csv("fea_imps/cb.csv", index=None)
 
     print("=============score")
     print(
