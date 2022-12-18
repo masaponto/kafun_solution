@@ -311,11 +311,8 @@ def train_skmodel_with_cv_log(
         # model = LGBMRegressor(random_state=Config.seed, n_estimators=1000)
 
         if args.model == "svr":
-
-            normalizer = StandardScaler()
-
+            normalizer = StandardScaler().fit(df_train[cols])
             model = SVR()
-            normalizer.fit(df_train[cols])
 
         elif args.model == "mlp":
             normalizer = Normalizer().fit(df_train[cols])
