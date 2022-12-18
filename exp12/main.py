@@ -440,7 +440,11 @@ def run_train(
             q=q,
         )
 
-    return prediction, scores, df_imps, _val_scores, v_test_scores
+    df_oof = pd.DataFrame()
+    df_oof.loc[:, "datetime"] = _df_tr["datetime"]
+    df_oof[label] = _val_scores
+
+    return prediction, scores, df_imps, _val_scores, v_test_scores, df_oof
 
 
 def make_feature(
@@ -553,6 +557,7 @@ def main():
         df_imps_ut,
         _val_scores_ut,
         v_test_scores_ut,
+        df_oof_ut,
     ) = run_train(
         _df_ut,
         _df_test_ut,
@@ -567,6 +572,7 @@ def main():
         df_imps_tk,
         _val_scores_tk,
         v_test_scores_tk,
+        df_oof_tk,
     ) = run_train(_df_tk, _df_test_tk, q_tk, "pollen_tokyo", args)
 
     (
@@ -575,6 +581,7 @@ def main():
         df_imps_cb,
         _val_scores_cb,
         v_test_scores_cb,
+        df_oof_cb,
     ) = run_train(_df_cb, _df_test_cb, q_cb, "pollen_chiba", args)
 
     # train 2
@@ -627,7 +634,15 @@ def main():
     _df_ut_2, _df_test_ut_2 = make_feature(
         _df_ut_2, _df_test_ut_2, make_feature_ut_2, args, cols=["pollen_utsunomiya"]
     )
-    prediction_ut, scores_ut, df_imps_ut, _val_scores_ut, v_test_scores_ut = run_train(
+
+    (
+        prediction_ut,
+        scores_ut,
+        df_imps_ut,
+        _val_scores_ut,
+        v_test_scores_ut,
+        df_oof_ut,
+    ) = run_train(
         _df_ut_2,
         _df_test_ut_2,
         q_ut,
@@ -641,7 +656,14 @@ def main():
         _df_tk_2, _df_test_tk_2, make_feature_tk_2, args, cols=["pollen_tokyo"]
     )
 
-    prediction_tk, scores_tk, df_imps_tk, _val_scores_tk, v_test_scores_tk = run_train(
+    (
+        prediction_tk,
+        scores_tk,
+        df_imps_tk,
+        _val_scores_tk,
+        v_test_scores_tk,
+        df_oof_tk,
+    ) = run_train(
         _df_tk_2, _df_test_tk_2, q_tk, "pollen_tokyo", args, label_cols=["pollen_tokyo"]
     )
 
@@ -651,7 +673,14 @@ def main():
         _df_cb_2, _df_test_cb_2, make_feature_cb_2, args, cols=["pollen_chiba"]
     )
 
-    prediction_cb, scores_cb, df_imps_cb, _val_scores_cb, v_test_scores_cb = run_train(
+    (
+        prediction_cb,
+        scores_cb,
+        df_imps_cb,
+        _val_scores_cb,
+        v_test_scores_cb,
+        df_oof_cb,
+    ) = run_train(
         _df_cb_2, _df_test_cb_2, q_cb, "pollen_chiba", args, label_cols=["pollen_chiba"]
     )
 
@@ -673,6 +702,12 @@ def main():
         f"mean = {np.mean([np.mean(v_test_scores_ut), np.mean(v_test_scores_tk), np.mean(v_test_scores_cb)]):0.4}",
     )
 
+    df_oof = df_train[["datetime"]]
+    df_oof = df_oof.merge(df_oof_ut, on="datetime")
+    df_oof = df_oof.merge(df_oof_tk, on="datetime")
+    df_oof = df_oof.merge(df_oof_cb, on="datetime")
+    df_oof = df_oof.reset_index(drop=True)
+
     df_sub = _df_test_ut[["datetime"]]
     df_sub.loc[:, "pollen_utsunomiya"] = prediction_ut
     df_sub.loc[:, "pollen_chiba"] = prediction_cb
@@ -684,6 +719,7 @@ def main():
     os.makedirs(output_path, exist_ok=True)
 
     df_sub.to_csv(f"{output_path}/{output_file}", index=None)
+    df_oof.to_csv(f"{output_path}/{output_file.split('.')[0]}_oof.csv", index=None)
 
 
 if __name__ == "__main__":
