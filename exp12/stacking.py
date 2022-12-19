@@ -36,26 +36,27 @@ def stacking_ridge(df, df_test, pollen_list, target_col):
     }
     grid_search = GridSearchCV(estimator, param_grid)
 
-    grid_search.fit(df[cols], df["target"])
+    grid_search.fit(df[cols], np.log1p(df["target"]))
     estimator = grid_search.best_estimator_
 
-    normalizer = Normalizer().fit(df[cols])
+    # normalizer = Normalizer().fit(df[cols])
     # estimator = LinearRegression()
     # estimator.fit(normalizer.transform(df[cols]), np.log1p(df["target"]))
 
-    print("===train")
-    print(df[cols])
+    # print("===train")
+    # print(df[cols])
 
-    print("===target")
-    print(df["target"])
+    # print("===target")
+    # print(df["target"])
 
-    print("===test")
-    print(df_test[cols])
+    # print("===test")
+    # print(df_test[cols])
 
-    preds = estimator.predict(normalizer.transform(df_test[cols]))
+    preds = estimator.predict(df_test[cols])
     preds = np.expm1(preds)
-    print("===pred")
-    print(preds)
+
+    # print("===pred")
+    # print(preds)
 
     _df = df_test[["datetime"]].copy()
     _df.loc[:, target_col] = preds
