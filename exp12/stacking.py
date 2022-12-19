@@ -5,6 +5,7 @@ from main import getNearestValue
 from sklearn.model_selection import GridSearchCV
 import numpy as np
 import os
+from ensemble import Const, ensemble
 
 
 def merge_data(dfs, target_col: str, df_train=None):
@@ -141,6 +142,73 @@ def stacking_1():
     return df
 
 
+def stacking_2():
+    df_train = pd.read_csv("../input/train_v2.csv", index_col=None)
+    df_train.loc[df_train["pollen_utsunomiya"] == -9998, "pollen_utsunomiya"] = 0
+    df_train.loc[df_train["pollen_chiba"] == -9998, "pollen_chiba"] = 0
+    df_train.loc[df_train["pollen_tokyo"] == -9998, "pollen_tokyo"] = 0
+
+    pollen_list_ut = list(set(df_train["pollen_utsunomiya"].tolist()))
+    pollen_list_tk = list(set(df_train["pollen_tokyo"].tolist()))
+    pollen_list_cb = list(set(df_train["pollen_chiba"].tolist()))
+
+    # read data
+    df_lgbm_tr = pd.read_csv("submission/sub_42_4_oof.csv", index_col=None)
+    df_lgbm_te = pd.read_csv("submission/sub_42_4.csv", index_col=None)
+
+    df_lgbm_hosei_tr = pd.read_csv("submission/sub_42_4_hosei_oof.csv", index_col=None)
+    df_lgbm_hosei_te = pd.read_csv("submission/sub_42_4_hosei.csv", index_col=None)
+
+    df_lgbm_q_50_tr = pd.read_csv("submission/sub_q-50-50-50_oof.csv", index_col=None)
+    df_lgbm_q_50_te = pd.read_csv("submission/sub_q-50-50-50.csv", index_col=None)
+
+    df_lgbm_no_q_tr = pd.read_csv(
+        "submission/sub_42_4_no_q_oof.csv", index_col=None
+    )  # same as lgbm_q_50k
+    df_lgbm_no_q_te = pd.read_csv(
+        "submission/sub_42_4_no_q.csv", index_col=None
+    )  # same as lgbm_q_50k
+
+    df_svr_tr = pd.read_csv("submission/sub_svr_42_4_oof.csv", index_col=None)
+    df_svr_te = pd.read_csv("submission/sub_svr_42_4.csv", index_col=None)
+
+    df_mlp_tr = pd.read_csv("submission/sub_mlp_42_4_oof.csv", index_col=None)
+    df_mlp_te = pd.read_csv("submission/sub_mlp_42_4.csv", index_col=None)
+
+    # preprocess
+
+    df_train_ut = merge_data(
+        [df_lgbm_tr, df_lgbm_hosei_tr, df_lgbm_q_50_tr, df_svr_tr, df_mlp_tr],
+        "pollen_utsunomiya",
+        df_train,
+    )
+
+    df_train_ut = df_train_ut[df_train_ut["target"] <= 50].reset_index(drop=True)
+
+    df_test_ut = merge_data(
+        [df_lgbm_te, df_lgbm_hosei_te, df_lgbm_q_50_te, df_svr_te, df_mlp_te],
+        "pollen_utsunomiya",
+    )
+
+    # tk
+    dfs_tk = [df_lgbm_hosei_te, df_lgbm_no_q_te]
+    score_list_tk = [Const.lgbm_hosei_score, Const.lgbm_no_q_score]
+
+    # cb
+    dfs_cb = [df_lgbm_hosei_te, df_lgbm_no_q_te]
+    score_list_cb = [Const.lgbm_hosei_score, Const.lgbm_no_q_score]
+
+    df_ut = stacking_ridge(df_train_ut, df_test_ut, pollen_list_ut, "pollen_utsunomiya")
+    df_tk = ensemble("pollen_tokyo", score_list_tk, dfs_tk, pollen_list_tk)
+    df_cb = ensemble("pollen_chiba", score_list_cb, dfs_cb, pollen_list_cb)
+
+    df = df_ut.merge(df_tk, on="datetime")
+    df = df.merge(df_cb, on="datetime")
+
+    df = df[["datetime", "pollen_utsunomiya", "pollen_chiba", "pollen_tokyo"]]
+    return df
+
+
 def parser():
     import argparse
 
@@ -160,7 +228,7 @@ def parser():
 def main():
     args = parser()
 
-    df = stacking_1()
+    df = stacking_2()
 
     output_path = "/".join(args.output.split("/")[:-1])
     output_file = args.output.split("/")[-1]
