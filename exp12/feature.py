@@ -633,6 +633,75 @@ def make_feature_tk(df: pd.DataFrame, args) -> pd.DataFrame:
     return _df
 
 
+def make_feature_tk_all(df: pd.DataFrame, args) -> pd.DataFrame:
+    _df = df.copy()
+    _df = time_feat(_df)
+
+    # 降水量カウント
+    _df = add_precipitation_zero_count_feat(_df)
+    _df = remove_noise(
+        _df,
+        window_length=7,
+        args=args,
+        overwite=False,
+        cols=[
+            "precipitation_tokyo",
+            "temperature_tokyo",
+            "windspeed_tokyo",
+            "precipitation_utsunomiya",
+            "temperature_utsunomiya",
+            "windspeed_utsunomiya",
+            "precipitation_chiba",
+            "temperature_chiba",
+            "windspeed_chiba",
+        ],
+    )
+
+    _df = add_lag_feat(
+        _df,
+        [
+            "temperature_tokyo",
+            "windspeed_tokyo",
+            "precipitation_utsunomiya",
+            "precipitation_chiba",
+            #####
+            "precipitation_tokyo",
+            "temperature_utsunomiya",
+            "temperature_chiba",
+            "windspeed_chiba",
+            "windspeed_utsunomiya",
+            #####
+        ],
+        "year",
+    )
+
+    _df = temperature_decompose(_df, ["temperature_tokyo"], args)
+
+    _df = add_wind_direction_to_cos_sin(
+        _df,
+        [
+            "winddirection_utsunomiya",
+            "winddirection_tokyo",
+            "winddirection_chiba",
+        ],
+    )
+
+    _df = add_sekisan_ondo2(_df, cols=["temperature_tokyo"])
+
+    _df = add_rising_setting(_df)
+
+    _df = _df.drop(
+        [
+            "winddirection_utsunomiya",
+            "winddirection_tokyo",
+            "winddirection_chiba",
+        ],
+        axis=1,
+    )
+
+    return _df
+
+
 def make_feature_tk_2(df: pd.DataFrame, args) -> pd.DataFrame:
     _df = df.copy()
     # _df = remove_noise(
