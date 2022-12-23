@@ -493,6 +493,7 @@ def parser():
     parser.add_argument("--q50", action="store_true")
     parser.add_argument("--no_q", action="store_true")
     parser.add_argument("--tk_feat_all", action="store_true")
+    parser.add_argument("--train_only_one", action="store_true")
 
     parser.add_argument("--output", type=str, required=True)
     parser.add_argument(
@@ -591,105 +592,122 @@ def main():
         df_oof_cb,
     ) = run_train(_df_cb, _df_test_cb, q_cb, "pollen_chiba", args)
 
-    # train 2
-    _df_ut_2 = _df_ut.copy()
-    _df_cb_2 = _df_cb.copy()
-    _df_tk_2 = _df_tk.copy()
+    if args.train_only_one:
+        prediction_ut = prediction_ut_1
+        prediction_tk = prediction_tk_1
+        prediction_cb = prediction_cb_1
 
-    _df_test_ut_2 = _df_test_ut.copy()
-    _df_test_cb_2 = _df_test_cb.copy()
-    _df_test_tk_2 = _df_test_tk.copy()
+    else:
 
-    _df_test_ut_2["pollen_tokyo"] = prediction_tk_1
-    _df_test_ut_2["pollen_chiba"] = prediction_cb_1
-    _df_test_ut_2["pollen_utsunomiya_pseudo"] = prediction_ut_1
+        # train 2
+        _df_ut_2 = _df_ut.copy()
+        _df_cb_2 = _df_cb.copy()
+        _df_tk_2 = _df_tk.copy()
 
-    _df_ut_2["pollen_utsunomiya_pseudo"] = _df_ut["pollen_utsunomiya"]
+        _df_test_ut_2 = _df_test_ut.copy()
+        _df_test_cb_2 = _df_test_cb.copy()
+        _df_test_tk_2 = _df_test_tk.copy()
 
-    _df_test_tk_2["pollen_utsunomiya"] = prediction_ut_1
-    _df_test_tk_2["pollen_chiba"] = prediction_cb_1
-    _df_test_tk_2["pollen_tokyo_pseudo"] = prediction_tk_1
+        _df_test_ut_2["pollen_tokyo"] = prediction_tk_1
+        _df_test_ut_2["pollen_chiba"] = prediction_cb_1
+        _df_test_ut_2["pollen_utsunomiya_pseudo"] = prediction_ut_1
 
-    _df_tk_2["pollen_tokyo_pseudo"] = _df_tk["pollen_tokyo"]
+        _df_ut_2["pollen_utsunomiya_pseudo"] = _df_ut["pollen_utsunomiya"]
 
-    _df_test_cb_2["pollen_utsunomiya"] = prediction_ut_1
-    _df_test_cb_2["pollen_tokyo"] = prediction_tk_1
-    _df_test_cb_2["pollen_chiba_pseudo"] = prediction_cb_1
+        _df_test_tk_2["pollen_utsunomiya"] = prediction_ut_1
+        _df_test_tk_2["pollen_chiba"] = prediction_cb_1
+        _df_test_tk_2["pollen_tokyo_pseudo"] = prediction_tk_1
 
-    _df_cb_2["pollen_chiba_pseudo"] = _df_cb["pollen_chiba"]
+        _df_tk_2["pollen_tokyo_pseudo"] = _df_tk["pollen_tokyo"]
 
-    if args.hosei:
-        _df_ut_2 = convert_pollen_total_2020(
+        _df_test_cb_2["pollen_utsunomiya"] = prediction_ut_1
+        _df_test_cb_2["pollen_tokyo"] = prediction_tk_1
+        _df_test_cb_2["pollen_chiba_pseudo"] = prediction_cb_1
+
+        _df_cb_2["pollen_chiba_pseudo"] = _df_cb["pollen_chiba"]
+
+        if args.hosei:
+            _df_ut_2 = convert_pollen_total_2020(
+                _df_ut_2,
+                ["pollen_tokyo", "pollen_chiba"],
+                [total_pollen_2020_tk, total_pollen_2020_cb],
+            )
+
+            _df_tk_2 = convert_pollen_total_2020(
+                _df_tk_2,
+                ["pollen_utsunomiya", "pollen_chiba"],
+                [total_pollen_2020_ut, total_pollen_2020_cb],
+            )
+
+            _df_cb_2 = convert_pollen_total_2020(
+                _df_cb_2,
+                ["pollen_utsunomiya", "pollen_tokyo"],
+                [total_pollen_2020_ut, total_pollen_2020_tk],
+            )
+
+        # ut
+        _df_ut_2, _df_test_ut_2 = make_feature(
+            _df_ut_2, _df_test_ut_2, make_feature_ut_2, args, cols=["pollen_utsunomiya"]
+        )
+
+        (
+            prediction_ut,
+            scores_ut,
+            df_imps_ut,
+            _val_scores_ut,
+            v_test_scores_ut,
+            df_oof_ut,
+        ) = run_train(
             _df_ut_2,
-            ["pollen_tokyo", "pollen_chiba"],
-            [total_pollen_2020_tk, total_pollen_2020_cb],
+            _df_test_ut_2,
+            q_ut,
+            "pollen_utsunomiya",
+            args,
+            label_cols=["pollen_utsunomiya"],
         )
 
-        _df_tk_2 = convert_pollen_total_2020(
+        # tk
+        _df_tk_2, _df_test_tk_2 = make_feature(
+            _df_tk_2, _df_test_tk_2, make_feature_tk_2, args, cols=["pollen_tokyo"]
+        )
+
+        (
+            prediction_tk,
+            scores_tk,
+            df_imps_tk,
+            _val_scores_tk,
+            v_test_scores_tk,
+            df_oof_tk,
+        ) = run_train(
             _df_tk_2,
-            ["pollen_utsunomiya", "pollen_chiba"],
-            [total_pollen_2020_ut, total_pollen_2020_cb],
+            _df_test_tk_2,
+            q_tk,
+            "pollen_tokyo",
+            args,
+            label_cols=["pollen_tokyo"],
         )
 
-        _df_cb_2 = convert_pollen_total_2020(
+        # cb
+
+        _df_cb_2, _df_test_cb_2 = make_feature(
+            _df_cb_2, _df_test_cb_2, make_feature_cb_2, args, cols=["pollen_chiba"]
+        )
+
+        (
+            prediction_cb,
+            scores_cb,
+            df_imps_cb,
+            _val_scores_cb,
+            v_test_scores_cb,
+            df_oof_cb,
+        ) = run_train(
             _df_cb_2,
-            ["pollen_utsunomiya", "pollen_tokyo"],
-            [total_pollen_2020_ut, total_pollen_2020_tk],
+            _df_test_cb_2,
+            q_cb,
+            "pollen_chiba",
+            args,
+            label_cols=["pollen_chiba"],
         )
-
-    # ut
-    _df_ut_2, _df_test_ut_2 = make_feature(
-        _df_ut_2, _df_test_ut_2, make_feature_ut_2, args, cols=["pollen_utsunomiya"]
-    )
-
-    (
-        prediction_ut,
-        scores_ut,
-        df_imps_ut,
-        _val_scores_ut,
-        v_test_scores_ut,
-        df_oof_ut,
-    ) = run_train(
-        _df_ut_2,
-        _df_test_ut_2,
-        q_ut,
-        "pollen_utsunomiya",
-        args,
-        label_cols=["pollen_utsunomiya"],
-    )
-
-    # tk
-    _df_tk_2, _df_test_tk_2 = make_feature(
-        _df_tk_2, _df_test_tk_2, make_feature_tk_2, args, cols=["pollen_tokyo"]
-    )
-
-    (
-        prediction_tk,
-        scores_tk,
-        df_imps_tk,
-        _val_scores_tk,
-        v_test_scores_tk,
-        df_oof_tk,
-    ) = run_train(
-        _df_tk_2, _df_test_tk_2, q_tk, "pollen_tokyo", args, label_cols=["pollen_tokyo"]
-    )
-
-    # cb
-
-    _df_cb_2, _df_test_cb_2 = make_feature(
-        _df_cb_2, _df_test_cb_2, make_feature_cb_2, args, cols=["pollen_chiba"]
-    )
-
-    (
-        prediction_cb,
-        scores_cb,
-        df_imps_cb,
-        _val_scores_cb,
-        v_test_scores_cb,
-        df_oof_cb,
-    ) = run_train(
-        _df_cb_2, _df_test_cb_2, q_cb, "pollen_chiba", args, label_cols=["pollen_chiba"]
-    )
 
     print("=============score")
     print(f"seed {args.seed}")

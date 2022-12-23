@@ -19,6 +19,7 @@ class Const:
     lgbm_param_score = 12.44279
     lgbm_no_q_tk_feature_all = 15.28358
     lgbm_no_q_num_leaves_16 = 14.22388
+    lgbm_no_q_train_only_one = 17.55224
 
 
 def ensemble(col, score_list, dfs, pollen_list):
@@ -56,8 +57,12 @@ def ensemble_8():
     #     "submission/sub_42_4_no_q_tk_feat_all.csv"
     # )
 
-    df_lgbm_no_q_num_leaves_16 = pd.read_csv(
-        "submission/sub_42_4_no_q_num_leaves_16.csv", index_col=None
+    # df_lgbm_no_q_num_leaves_16 = pd.read_csv(
+    #     "submission/sub_42_4_no_q_num_leaves_16.csv", index_col=None
+    # )
+
+    df_lgbm_no_q_train_only_one = pd.read_csv(
+        "submission/sub_42_4_no_q_train_only_one.csv", index_col=None
     )
 
     # ut
@@ -74,19 +79,29 @@ def ensemble_8():
     dfs_tk = [
         df_lgbm_hosei,
         df_lgbm_no_q,
+        # df_lgbm_no_q_train_only_one
         # df_lgbm_no_q_tk_feature_all
-        df_lgbm_no_q_num_leaves_16,
+        # df_lgbm_no_q_num_leaves_16,
     ]
     score_list_tk = [
         Const.lgbm_hosei_score,
         Const.lgbm_no_q_score,
+        # Const.lgbm_no_q_train_only_one
         # Const.lgbm_no_q_tk_feature_all,
-        Const.lgbm_no_q_num_leaves_16,
+        # Const.lgbm_no_q_num_leaves_16,
     ]
 
     # cb
-    dfs_cb = [df_lgbm_hosei, df_lgbm_no_q]
-    score_list_cb = [Const.lgbm_hosei_score, Const.lgbm_no_q_score]
+    dfs_cb = [
+        df_lgbm_hosei,
+        df_lgbm_no_q,
+        df_lgbm_no_q_train_only_one
+    ]
+    score_list_cb = [
+        Const.lgbm_hosei_score,
+        Const.lgbm_no_q_score,
+        Const.lgbm_no_q_train_only_one
+    ]
 
     df_ut = ensemble("pollen_utsunomiya", score_list_ut, dfs_ut, pollen_list_ut)
     df_tk = ensemble("pollen_tokyo", score_list_tk, dfs_tk, pollen_list_tk)
