@@ -185,7 +185,12 @@ def train_lightgbm_with_cv_log(
             df_train = df_train[df_train[label] <= q].reset_index(drop=True)
             df_v_val = df_v_val[df_v_val[label] <= q].reset_index(drop=True)
 
-        model = LGBMRegressor(random_state=args.seed, n_estimators=1000)
+        if args.num_leaves_16:
+            model = LGBMRegressor(
+                random_state=args.seed, n_estimators=1000, num_leaves=16
+            )
+        else:
+            model = LGBMRegressor(random_state=args.seed, n_estimators=1000)
 
         model.fit(
             df_train[cols],
@@ -494,6 +499,7 @@ def parser():
     parser.add_argument("--no_q", action="store_true")
     parser.add_argument("--tk_feat_all", action="store_true")
     parser.add_argument("--train_only_one", action="store_true")
+    parser.add_argument("--num_leaves_16", action="store_true")
 
     parser.add_argument("--output", type=str, required=True)
     parser.add_argument(
