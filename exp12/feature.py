@@ -827,3 +827,60 @@ def make_feature_cb_2(df: pd.DataFrame, args) -> pd.DataFrame:
     _df = _df.drop("pollen_chiba_pseudo", axis=1)
 
     return _df
+
+
+def make_feature_cb_all(df: pd.DataFrame, args) -> pd.DataFrame:
+    _df = df.copy()
+    _df = time_feat(_df)
+
+    # 降水量カウント
+    _df = add_precipitation_zero_count_feat(_df)
+
+    _df = remove_noise(
+        _df,
+        window_length=7,
+        args=args,
+        overwite=False,
+        cols=[
+            "precipitation_chiba",
+            "temperature_chiba",
+            "windspeed_chiba",
+            "precipitation_tokyo",
+            "temperature_tokyo",
+            "windspeed_tokyo",
+        ],
+    )
+
+    _df = add_lag_feat(
+        _df,
+        ["precipitation_chiba", "temperature_chiba"],
+        "year",
+    )
+
+    _df = temperature_decompose(_df, ["temperature_chiba"], args)
+
+    _df = add_wind_direction_to_cos_sin(
+        _df,
+        ["winddirection_utsunomiya", "winddirection_tokyo", "winddirection_chiba"],
+    )
+
+    _df = add_wind_direction_one_hot(_df, ["winddirection_chiba"])
+
+    _df = add_sekisan_ondo2(_df, cols=["temperature_chiba"])
+
+    _df = add_rising_setting(_df)
+
+    _df = _df.drop(
+        [
+            "winddirection_utsunomiya",
+            "winddirection_tokyo",
+            "winddirection_chiba",
+            # "temperature_utsunomiya",
+            # "temperature_tokyo",
+            # "precipitation_utsunomiya",
+            # "windspeed_utsunomiya",
+        ],
+        axis=1,
+    )
+
+    return _df

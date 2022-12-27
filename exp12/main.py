@@ -43,6 +43,7 @@ from feature import (
     make_feature_cb,
     make_feature_cb_2,
     make_feature_tk_all,
+    make_feature_cb_all,
 )
 
 warnings.simplefilter("ignore")
@@ -500,6 +501,7 @@ def parser():
     parser.add_argument("--tk_feat_all", action="store_true")
     parser.add_argument("--train_only_one", action="store_true")
     parser.add_argument("--num_leaves_16", action="store_true")
+    parser.add_argument("--cb_feat_all", action="store_true")
 
     parser.add_argument("--output", type=str, required=True)
     parser.add_argument(
@@ -541,7 +543,10 @@ def main():
     else:
         _df_tk, _df_test_tk = make_feature(df_train, df_test, make_feature_tk, args)
 
-    _df_cb, _df_test_cb = make_feature(df_train, df_test, make_feature_cb, args)
+    if args.cb_feat_all:
+        _df_cb, _df_test_cb = make_feature(df_train, df_test, make_feature_cb_all, args)
+    else:
+        _df_cb, _df_test_cb = make_feature(df_train, df_test, make_feature_cb, args)
 
     q_ut, q_tk, q_cb = 50, 30, 36
 

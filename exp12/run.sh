@@ -5,3 +5,5 @@ python main.py --model svr --output submission/sub_svr_42_4.csv
 python main.py --model mlp --output submission/sub_mlp_42_4.csv
 python main.py --no_q --output submission/sub_42_4_no_q.csv
 python main.py --no_q --train_only_one --output submission/sub_42_4_no_q_train_only_one.csv
+python main.py --no_q --num_leaves_16 --output submission/sub_42_4_no_q_num_leaves_16.csv
+python main.py --no_q --model mlp --output submission/sub_mlp_no_q_42_4.csv

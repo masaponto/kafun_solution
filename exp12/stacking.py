@@ -8,11 +8,20 @@ import os
 from ensemble import Const, ensemble
 
 
-def merge_data(dfs, target_col: str, df_train=None):
+def merge_data(dfs, target_col: str, df_train=None, mode="default"):
 
-    df = dfs[0][["datetime", target_col]]
-    for _df in dfs[1:]:
-        df = df.merge(_df[["datetime", target_col]], on="datetime")
+    if mode == "default":
+
+        df = dfs[0][["datetime", target_col]]
+        for _df in dfs[1:]:
+            df = df.merge(_df[["datetime", target_col]], on="datetime")
+    elif mode == "all":
+        cols = ["datetime", "pollen_chiba", "pollen_utsunomiya", "pollen_chiba"]
+        df = dfs[0][cols]
+        for _df in dfs[1:]:
+            df = df.merge(_df[cols], on="datetime")
+    else:
+        raise ValueError(f"unkown mode {mode}")
 
     if df_train is not None:
         df_label = df_train[["datetime", target_col]].rename(
@@ -37,7 +46,10 @@ def stacking_ridge(df, df_test, pollen_list, target_col):
     }
     grid_search = GridSearchCV(estimator, param_grid)
 
-    grid_search.fit(df[cols], np.log1p(df["target"]))
+    df.to_csv("tmp.csv", index=None)
+
+    # grid_search.fit(df[cols], np.log1p(df["target"]))
+    grid_search.fit(df[cols], df["target"])
     estimator = grid_search.best_estimator_
 
     # normalizer = Normalizer().fit(df[cols])
@@ -54,7 +66,7 @@ def stacking_ridge(df, df_test, pollen_list, target_col):
     # print(df_test[cols])
 
     preds = estimator.predict(df_test[cols])
-    preds = np.expm1(preds)
+    # preds = np.expm1(preds)
 
     # print("===pred")
     # print(preds)
@@ -209,6 +221,140 @@ def stacking_2():
     return df
 
 
+def stacking_10():
+    df_train = pd.read_csv("../input/train_v2.csv", index_col=None)
+    pollen_list_ut = list(set(df_train["pollen_utsunomiya"].tolist()))
+    pollen_list_tk = list(set(df_train["pollen_tokyo"].tolist()))
+    pollen_list_cb = list(set(df_train["pollen_chiba"].tolist()))
+
+    df_lgbm = pd.read_csv("submission/sub_42_4.csv", index_col=None)
+    df_lgbm_hosei = pd.read_csv("submission/sub_42_4_hosei.csv", index_col=None)
+    df_lgbm_q_50 = pd.read_csv("submission/sub_q-50-50-50.csv", index_col=None)
+    df_lgbm_no_q = pd.read_csv(
+        "submission/sub_42_4_no_q.csv", index_col=None
+    )  # same as lgbm_q_50k
+    df_svr = pd.read_csv("submission/sub_svr_42_4.csv", index_col=None)
+    df_mlp = pd.read_csv("submission/sub_mlp_42_4.csv", index_col=None)
+
+    # df_lgbm_no_q_tk_feature_all = pd.read_csv(
+    #     "submission/sub_42_4_no_q_tk_feat_all.csv"
+    # )
+
+    df_lgbm_no_q_num_leaves_16 = pd.read_csv(
+        "submission/sub_42_4_no_q_num_leaves_16.csv", index_col=None
+    )
+
+    df_lgbm_no_q_train_only_one = pd.read_csv(
+        "submission/sub_42_4_no_q_train_only_one.csv", index_col=None
+    )
+
+    # df_lgbm_hosei_train_only_one = pd.read_csv(
+    #     "submission/sub_42_4_hosei_train_only_one.csv", index_col=None
+    # )
+
+    # df_lgbm_train_only_one = pd.read_csv(
+    #     "submission/sub_42_4_train_only_one.csv", index_col=None
+    # )
+
+    # df_lgbm_hosei_train_only_one = pd.read_csv(
+    #     "submission/sub_42_4_hosei_train_only_one.csv", index_col=None
+    # )
+
+    df_lgbm_hosei_tr = pd.read_csv("submission/sub_42_4_hosei_oof.csv", index_col=None)
+    df_lgbm_no_q_tr = pd.read_csv(
+        "submission/sub_42_4_no_q_oof.csv", index_col=None
+    )  # same as lgbm_q_50k
+
+    df_lgbm_no_q_train_only_one_tr = pd.read_csv(
+        "submission/sub_42_4_no_q_train_only_one_oof.csv", index_col=None
+    )
+
+    df_lgbm_no_q_num_leaves_16_tr = pd.read_csv(
+        "submission/sub_42_4_no_q_num_leaves_16_oof.csv", index_col=None
+    )
+
+    # ut
+    dfs_ut = [
+        df_lgbm,
+        df_lgbm_hosei,
+        df_lgbm_q_50,
+        df_svr,
+        df_mlp,
+        # df_lgbm_train_only_one,
+        # df_lgbm_hosei_train_only_one,
+    ]
+    score_list_ut = [
+        Const.lgbm_score,
+        Const.lgbm_hosei_score,
+        Const.lgbm_q_50_score,
+        Const.svr_score,
+        Const.mlp_score,
+        # Const.lgbm_train_only_one,
+        # Const.lgbm_hosei_train_only_one,
+    ]
+
+    # tk
+    dfs_tk = [
+        df_lgbm_hosei,
+        df_lgbm_no_q,
+        # df_lgbm_hosei_train_only_one,
+        # df_lgbm_no_q_train_only_one
+        # df_lgbm_no_q_tk_feature_all
+        # df_lgbm_no_q_num_leaves_16,
+        # df_lgbm_hosei_train_only_one,
+    ]
+    score_list_tk = [
+        Const.lgbm_hosei_score,
+        Const.lgbm_no_q_score,
+        # Const.lgbm_no_q_train_only_one
+        # Const.lgbm_no_q_tk_feature_all,
+        # Const.lgbm_no_q_num_leaves_16,
+        # Const.lgbm_hosei_train_only_one,
+        # Const.lgbm_hosei_train_only_one,
+    ]
+
+    # cb
+    dfs_cb = [
+        df_lgbm_hosei,
+        df_lgbm_no_q,
+        df_lgbm_no_q_train_only_one,
+        df_lgbm_no_q_num_leaves_16,
+        # df_lgbm_hosei_train_only_one,
+    ]
+    # score_list_cb = [
+    #     Const.lgbm_hosei_score,
+    #     Const.lgbm_no_q_score,
+    #     Const.lgbm_no_q_train_only_one,
+    #     Const.lgbm_no_q_num_leaves_16,
+    #     # Const.lgbm_hosei_train_only_one,
+    # ]
+
+    df_train_cb = merge_data(
+        [
+            df_lgbm_hosei_tr,
+            df_lgbm_no_q_tr,
+            df_lgbm_no_q_train_only_one_tr,
+            df_lgbm_no_q_num_leaves_16_tr,
+        ],
+        "pollen_chiba",
+        df_train,
+    )
+
+    df_test_cb = merge_data(dfs_cb, "pollen_chiba")
+
+    df_ut = ensemble("pollen_utsunomiya", score_list_ut, dfs_ut, pollen_list_ut)
+    df_tk = ensemble("pollen_tokyo", score_list_tk, dfs_tk, pollen_list_tk)
+    # df_cb = ensemble("pollen_chiba", score_list_cb, dfs_cb, pollen_list_cb)
+    df_cb = stacking_ridge(df_train_cb, df_test_cb, pollen_list_cb, "pollen_chiba")
+
+    #
+    df = df_ut.merge(df_tk, on="datetime")
+    df = df.merge(df_cb, on="datetime")
+
+    df = df[["datetime", "pollen_utsunomiya", "pollen_chiba", "pollen_tokyo"]]
+    return df
+
+
 def parser():
     import argparse
 
@@ -228,7 +374,8 @@ def parser():
 def main():
     args = parser()
 
-    df = stacking_2()
+    # df = stacking_2()
+    df = stacking_10()
 
     output_path = "/".join(args.output.split("/")[:-1])
     output_file = args.output.split("/")[-1]
